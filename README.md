@@ -1,3 +1,3 @@
-# fullstackOpen2019
+# Puhelinluettelo Backend
 
 puhelinluettelon bäkkäriä ja lisäämistä Herokuun.
