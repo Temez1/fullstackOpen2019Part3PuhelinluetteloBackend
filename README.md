@@ -1,4 +1,4 @@
-# Puhelinluettelo Backend
+# Puhelinluettelo Fullstack
 
 puhelinluettelon bäkkäriä, lisäämistä Herokuun ja frontin yhdistäminen bäkkäriin. Koko kurssi löytyy [täältä](https://github.com/Temez1/fullstackOpen2019)
 
