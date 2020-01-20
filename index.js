@@ -16,10 +16,10 @@ morgan.token('res-body', (req, res) => {
   return bodyString
 })
 
+app.use(express.static('build'))
 app.use(bodyParser.json())
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms :res-body'))
 app.use(cors())
-app.use(express.static('build'))
 
 app.get('/api/persons', (req, res) => {
   personModel.find({}).then(persons => {
@@ -35,23 +35,22 @@ app.post('/api/persons', (req, res) => {
     res.status(400).json({error: "Person's name or number is missing from request"})
   }
 
-/*   personModel.find({name: requestedPerson.name}).then(person => {
-    if (person !== undefined){
-      res.status(409).json({error: `Person with name '${foundPerson.name}' is already found from phonebook`})
+  personModel.exists({name: requestedPerson.name})
+  .then(outcome => {
+    if (outcome){
+      res.status(409).json({error: `Person with name '${requestedPerson.name}' is already found from phonebook`})
     }
-  }) */
-
-  const newPerson = new personModel({
-    name: requestedPerson.name ,
-    number: requestedPerson.number ,
+    else {
+      const newPerson = new personModel({
+        name: requestedPerson.name ,
+        number: requestedPerson.number ,
+      })
+    
+      newPerson.save().then(savedPerson => {
+        res.json(savedPerson.toJSON())
+      })
+    }
   })
-
-  newPerson.toJSON()
-  console.log(newPerson)
-  newPerson.save().then(savedPerson => {
-    res.json(savedPerson)
-  })
-
 })
 
 app.get('/api/persons/:id', (req, res, next) => {
@@ -71,7 +70,7 @@ app.put('/api/persons/:id', (req, res, next) => {
 
   const person = {
     name: body.name,
-    number: body.important
+    number: body.number
   }
 
   personModel.findByIdAndUpdate(req.params.id, person, {new: true})
@@ -84,16 +83,10 @@ app.put('/api/persons/:id', (req, res, next) => {
 app.delete('/api/persons/:id', (req, res, next) => {
   console.log(req.params.id)
   personModel.findByIdAndRemove(req.params.id)
-             .then(result => {
-               res.status(204).end()
-             })
-             .catch(error => next(error))
-})
-
-app.get('/info', (req, res) => {
-  const peopleAmount = persons.length
-  const date = new Date()
-  res.send(`Phonebook has info for ${peopleAmount} people ${date} `)
+      .then(result => {
+        res.status(204).end()
+      })
+      .catch(error => next(error))
 })
 
 const unknownEndpoint = (req, res) => {
