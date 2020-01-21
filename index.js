@@ -65,11 +65,18 @@ app.put('/api/persons/:id', (req, res, next) => {
     number: body.number
   }
 
-  personModel.findByIdAndUpdate(req.params.id, person, {new: true})
-             .then( updatedPerson => {
-               res.json(updatedPerson.toJSON())
-             })
-             .catch(error => next(error))
+  // mongoose-unique-validator context option, more:
+  // https://www.npmjs.com/package/mongoose-unique-validator#find--updates
+  personModel.findByIdAndUpdate(req.params.id, person, {new: true, runValidators:true, context:'query'})
+      .then(updatedPerson => {
+        // This happens when someone has deleted the doc and you are trying to
+        // update it (toJSON throws TypeError "can't read null")
+        if (updatedPerson === null){
+          return res.status(410).json({error:"The person information is deleted already from the server."})
+        } 
+        res.json(updatedPerson.toJSON())
+      })
+      .catch(error => next(error))
 })
 
 app.delete('/api/persons/:id', (req, res, next) => {
@@ -87,7 +94,7 @@ const unknownEndpoint = (req, res) => {
 app.use(unknownEndpoint)
 
 const errorHandler = (error, req, res, next) => {
-  console.error(error.message)
+  console.error(error)
 
   if (error.name === 'CastError' && error.kind === 'ObjectId') {
     return res.status(400).send({ error: 'malformatted id' })
