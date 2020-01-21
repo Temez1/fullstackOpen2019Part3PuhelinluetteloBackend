@@ -1,11 +1,15 @@
 require('dotenv').config()
 const express = require('express')
-const app = express()
 const bodyParser = require('body-parser')
 const morgan = require('morgan')
 const cors = require('cors')
 
 const personModel = require('./models/person')
+
+const app = express()
+
+app.use(express.static('build'))
+app.use(bodyParser.json())
 
 morgan.token('res-body', (req, res) => {
   const bodyString = JSON.stringify(req.body)
@@ -16,8 +20,6 @@ morgan.token('res-body', (req, res) => {
   return bodyString
 })
 
-app.use(express.static('build'))
-app.use(bodyParser.json())
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms :res-body'))
 app.use(cors())
 
@@ -27,30 +29,20 @@ app.get('/api/persons', (req, res) => {
   })
 })
 
-app.post('/api/persons', (req, res) => {
-
+app.post('/api/persons', (req, res, next) => {
   const requestedPerson = req.body
 
-  if (!requestedPerson.name || !requestedPerson.number){
-    res.status(400).json({error: "Person's name or number is missing from request"})
-  }
-
-  personModel.exists({name: requestedPerson.name})
-  .then(outcome => {
-    if (outcome){
-      res.status(409).json({error: `Person with name '${requestedPerson.name}' is already found from phonebook`})
-    }
-    else {
-      const newPerson = new personModel({
-        name: requestedPerson.name ,
-        number: requestedPerson.number ,
-      })
-    
-      newPerson.save().then(savedPerson => {
-        res.json(savedPerson.toJSON())
-      })
-    }
+  const newPerson = new personModel({
+    name: requestedPerson.name ,
+    number: requestedPerson.number ,
   })
+
+  newPerson.save()
+    .then(savedPerson => savedPerson.toJSON())
+    .then(savedAndFormattedPerson => {
+      res.json(savedAndFormattedPerson)
+    })
+    .catch(error => next(error))
 })
 
 app.get('/api/persons/:id', (req, res, next) => {
@@ -59,7 +51,7 @@ app.get('/api/persons/:id', (req, res, next) => {
       res.json(person.toJSON())
     }
     else {
-      response.status(404).end()
+      res.status(404).end()
     }
   })
   .catch(error => next(error))
@@ -81,7 +73,6 @@ app.put('/api/persons/:id', (req, res, next) => {
 })
 
 app.delete('/api/persons/:id', (req, res, next) => {
-  console.log(req.params.id)
   personModel.findByIdAndRemove(req.params.id)
       .then(result => {
         res.status(204).end()
@@ -95,12 +86,35 @@ const unknownEndpoint = (req, res) => {
 
 app.use(unknownEndpoint)
 
-const errorHandler = (error, request, response, next) => {
+const errorHandler = (error, req, res, next) => {
   console.error(error.message)
 
   if (error.name === 'CastError' && error.kind === 'ObjectId') {
-    return response.status(400).send({ error: 'malformatted id' })
-  } 
+    return res.status(400).send({ error: 'malformatted id' })
+  }
+  else if (error.name === 'ValidationError'){
+    // Person name
+    if (error.errors.name) {
+      if (error.errors.name.kind === 'required') {
+        return res.status(400).json({ error: error.message })
+      }
+      else if (error.errors.name.kind === 'minlength'){
+        return res.status(400).json({ error: error.message })
+      }
+      else if (error.errors.name.kind === 'unique'){
+        return res.status(409).json({ error: error.message })
+      }
+    }
+    // Person number
+    if(error.errors.number){
+      if (error.errors.number.kind === 'required') {
+        return res.status(400).json({ error: error.message })
+      }
+      else if (error.errors.number.kind === 'minlength'){
+        return res.status(400).json({ error: error.message })
+      }
+    }
+  }
 
   next(error)
 }
