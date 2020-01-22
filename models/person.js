@@ -7,18 +7,6 @@ mongoose.set("useUnifiedTopology", true)
 mongoose.set("useFindAndModify", false)
 mongoose.set("useCreateIndex", true)
 
-const dbUrl = process.env.MONGODB_URI
-
-console.log("Connecting to MongoDB")
-
-mongoose.connect(dbUrl, { useNewUrlParser: true })
-  .then(() => {
-    console.log("Connected to MongoDB")
-  })
-  .catch((error) => {
-    console.log("Error connecting to MongoDB", error.message)
-  })
-
 const personSchema = new mongoose.Schema({
   // eslint-disable-next-line object-curly-newline
   name: { type: String, minlength: 3, required: true, unique: true },
