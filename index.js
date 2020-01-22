@@ -5,7 +5,7 @@ const bodyParser = require("body-parser")
 const morgan = require("morgan")
 const cors = require("cors")
 
-const personModel = require("./models/person")
+const PersonModel = require("./models/person")
 
 const app = express()
 
@@ -25,7 +25,7 @@ app.use(morgan(":method :url :status :res[content-length] - :response-time ms :r
 app.use(cors())
 
 app.get("/api/persons", (req, res) => {
-  personModel.find({}).then((persons) => {
+  PersonModel.find({}).then((persons) => {
     res.json(persons.map((person) => person.toJSON()))
   })
 })
@@ -33,7 +33,7 @@ app.get("/api/persons", (req, res) => {
 app.post("/api/persons", (req, res, next) => {
   const requestedPerson = req.body
 
-  const newPerson = new personModel({
+  const newPerson = new PersonModel({
     name: requestedPerson.name,
     number: requestedPerson.number,
   })
@@ -47,7 +47,7 @@ app.post("/api/persons", (req, res, next) => {
 })
 
 app.get("/api/persons/:id", (req, res, next) => {
-  personModel.findById(req.params.id).then((person) => {
+  PersonModel.findById(req.params.id).then((person) => {
     if (person) {
       res.json(person.toJSON())
     } else {
@@ -67,12 +67,12 @@ app.put("/api/persons/:id", (req, res, next) => {
 
   // mongoose-unique-validator context option, more:
   // https://www.npmjs.com/package/mongoose-unique-validator#find--updates
-  personModel.findByIdAndUpdate(req.params.id, person, { new: true, runValidators: true, context: "query" })
+  PersonModel.findByIdAndUpdate(req.params.id, person, { new: true, runValidators: true, context: "query" })
     .then((updatedPerson) => {
       // This happens when someone has deleted the doc and you are trying to
       // update it (toJSON throws TypeError "can't read null")
       if (updatedPerson === null) {
-        return res.status(410).json({ error: "The person information is deleted already from the server." })
+        res.status(410).json({ error: "The person information is deleted already from the server." })
       }
       res.json(updatedPerson.toJSON())
     })
@@ -80,7 +80,7 @@ app.put("/api/persons/:id", (req, res, next) => {
 })
 
 app.delete("/api/persons/:id", (req, res, next) => {
-  personModel.findByIdAndRemove(req.params.id)
+  PersonModel.findByIdAndRemove(req.params.id)
     .then(() => {
       res.status(204).end()
     })
@@ -97,28 +97,28 @@ const errorHandler = (error, req, res, next) => {
   console.error(error.message)
 
   if (error.name === "CastError" && error.kind === "ObjectId") {
-    return res.status(400).send({ error: "malformatted id" })
+    res.status(400).send({ error: "malformatted id" })
   }
   if (error.name === "ValidationError") {
     // Person name
     if (error.errors.name) {
       if (error.errors.name.kind === "required") {
-        return res.status(400).json({ error: error.message })
+        res.status(400).json({ error: error.message })
       }
       if (error.errors.name.kind === "minlength") {
-        return res.status(400).json({ error: error.message })
+        res.status(400).json({ error: error.message })
       }
       if (error.errors.name.kind === "unique") {
-        return res.status(409).json({ error: error.message })
+        res.status(409).json({ error: error.message })
       }
     }
     // Person number
     if (error.errors.number) {
       if (error.errors.number.kind === "required") {
-        return res.status(400).json({ error: error.message })
+        res.status(400).json({ error: error.message })
       }
       if (error.errors.number.kind === "minlength") {
-        return res.status(400).json({ error: error.message })
+        res.status(400).json({ error: error.message })
       }
     }
   }
